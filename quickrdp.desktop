@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=QuickRDP
+Comment=Minimal launcher for sdl-freerdp, Enter connects
+Exec=/home/ronald/code/quickrdp/quickrdp.py
+Icon=preferences-desktop-remote-desktop
+Terminal=false
+Categories=Network;RemoteAccess;GTK;
+Keywords=rdp;remote desktop;freerdp;
+StartupNotify=true
+Actions=blue;
+
+[Desktop Action blue]
+Name=Connect to blue
+Exec=/home/ronald/code/quickrdp/quickrdp.py blue
