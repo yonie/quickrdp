@@ -19,7 +19,8 @@ and asked for the password every single time.
 - Saved hosts in a list; double-click connects, Edit and Delete do what they say.
 
 - Passwords live in the **GNOME keyring** (libsecret) and are handed to sdl-freerdp over
-  stdin, never on the command line. Missing one? QuickRDP asks once and stores it.
+  stdin, never on the command line. Missing one? QuickRDP asks for user and password once
+  and stores them. A rejected password is forgotten and asked again.
 - Sensible session defaults: `/dynamic-resolution /gfx:AVC444 /network:lan +clipboard
   +auto-reconnect`. The LAN setting skips the Windows server's own network probe, which
   otherwise tends to misjudge the link and throttle the encoder into a stuttery mess.
@@ -28,7 +29,10 @@ and asked for the password every single time.
 - An unknown address opens the Add dialog prefilled, so credentials are entered in
   QuickRDP and the host is saved and connected in one go.
 - `quickrdp.py <name>` connects without showing a window (handy for desktop actions).
-- Sessions keep running when the launcher is closed.
+- Sessions keep running when the launcher is closed. Connecting to a host that is already
+  open just says so instead of opening a second session.
+- Failures that are not your fault (host unreachable, TLS, and so on) stay on screen in a
+  dialog with the log path, rather than vanishing in a toast.
 
 ## Installation
 
@@ -75,8 +79,9 @@ Hosts are stored in `~/.config/quickrdp/hosts.json`, session logs in
 |--------|-------|
 | Connect | Enter (in the host field), double-click a row, or "Connect" |
 | Add host | Ctrl+N or "Add" |
-| Edit selected host | F2 or "Edit" |
+| Edit selected host | Ctrl+E, F2 or "Edit" |
 | Delete selected host | Delete (list focused) or "Delete" |
+| Help | F1 or "Help" |
 | Close launcher | Esc or Ctrl+Q (sessions keep running) |
 | Release keyboard grab inside a session | Right Ctrl+G |
 

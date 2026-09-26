@@ -38,6 +38,7 @@ class TestConfig(unittest.TestCase):
         cfg = {"last": "", "hosts": {"blue": {"address": "10.0.0.2"}}}
         self.assertEqual(quickrdp.resolve_host(cfg, "blue"), "blue")
         self.assertEqual(quickrdp.resolve_host(cfg, "10.0.0.2"), "blue")
+        self.assertEqual(quickrdp.resolve_host(cfg, "BLUE"), "blue")
         self.assertIsNone(quickrdp.resolve_host(cfg, "nope"))
 
 
@@ -59,11 +60,19 @@ class TestLaunch(unittest.TestCase):
         log = os.path.join(tempfile.mkdtemp(), "x.log")
         with open(log, "w") as f:
             f.write("[ERROR] nla_recv_pdu: ERRCONNECT_LOGON_FAILURE [0x00020014]\n")
-        self.assertIn("password", quickrdp.explain_exit(134, log))
+        token, msg = quickrdp.explain_exit(134, log)
+        self.assertEqual(token, "ERRCONNECT_LOGON_FAILURE")
+        self.assertIn("password", msg)
         with open(log, "w") as f:
-            f.write("[ERROR] foo: ERRCONNECT_CONNECT_FAILED [0x00020006]\n")
-        self.assertEqual(quickrdp.explain_exit(1, log), "ERRCONNECT_CONNECT_FAILED")
-        self.assertEqual(quickrdp.explain_exit(3, "/nonexistent"), "sdl-freerdp exited with 3")
+            f.write("[ERROR] foo: ERRCONNECT_SOMETHING_NEW [0x00020006]\n")
+        self.assertEqual(quickrdp.explain_exit(1, log),
+                         ("ERRCONNECT_SOMETHING_NEW", "Connection failed (ERRCONNECT_SOMETHING_NEW)."))
+        self.assertEqual(quickrdp.explain_exit(3, "/nonexistent"),
+                         ("", "Connection failed (exit code 3)."))
+
+    def test_build_argv_rejects_unmatched_quote(self):
+        with self.assertRaises(ValueError):
+            quickrdp.build_argv({"address": "h", "args": "/title:'oops"})
 
 
 class TestAppClass(unittest.TestCase):

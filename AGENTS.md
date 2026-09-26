@@ -18,8 +18,18 @@ README screenshot, MIT. No libadwaita, no GTK4: keep it that way for consistency
   Add dialog prefilled with it (focus on User); saving connects immediately. sdl-freerdp's
   own credential dialog should never appear; only `quickrdp.py <unknown-address>` on the
   command line still leaves credentials to it.
-- Connecting to a host with a user but no stored password asks for it in the launcher
-  first (Enter connects), stores it, then launches.
+- Connecting to a host without a stored password asks for user and password in the launcher
+  first (Enter connects), stores them, then launches. A session that ends with
+  `ERRCONNECT_LOGON_FAILURE` clears the keyring entry and reopens that dialog.
+- Edit/Delete are insensitive without a selection. Names are unique case-insensitively
+  and the dialog refuses duplicates. Options are validated with `shlex.split` before
+  saving; the launch path still catches `ValueError` and a missing `sdl-freerdp`
+  (`FileNotFoundError`) and shows an error dialog instead of a traceback.
+- In the edit dialog the password field is never prefilled: empty means unchanged
+  (placeholder says so), non-empty replaces. Renaming carries the password over.
+- One session per host: `self.sessions` maps name to Popen, a second connect toasts.
+- Errors that need reading (`show_error`) are non-modal MessageDialogs; toasts are only
+  for confirmations.
 - List rows are saved hosts; double-click or Enter on a row connects, selecting a row
   fills the entry. Edit (F2) and Delete (Delete key, list focused) act on the selection.
   Enter inside the edit dialog saves. Only the address is required; the name defaults to
@@ -67,6 +77,24 @@ it entirely.
 
 `freerdp` (sdl-freerdp with OpenH264 and GFX built in), `python3-gobject`, `gtk3`,
 `libsecret`. All present on magenta.
+
+## UX review (Kimi, 2026-09-26)
+
+The code was reviewed by kimi-k3 via the local Ollama proxy; 12 of its 15 points were
+applied (missing client, option validation, rejected-password loop, keyring errors,
+persistent error dialogs, disabled Edit/Delete, name collisions, case-insensitive
+lookup, duplicate sessions, tooltips with shortcuts, password reveal toggle, destructive
+Delete button). Rejected on purpose because they are the quick* family look: emoji
+button labels, the "(Enter connects)" toolbar hint, and replacing the toolbar with
+symbolic icons.
+
+## GUI testing without touching the desktop
+
+Never run GUI probes on the live Wayland session; they steal focus while Ronald types.
+Use broadway: `broadwayd :8 &` then `GDK_BACKEND=broadway BROADWAY_DISPLAY=:8 python3 ...`.
+Drive dialogs with `GLib.timeout_add` steps scheduled up front (a step that opens a
+modal `dialog.run()` does not return until it closes, so chaining from inside a step
+hangs), and locate widgets via the dialog's grid `top-attach` property.
 
 ## Checks before committing
 
