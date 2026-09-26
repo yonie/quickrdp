@@ -14,8 +14,10 @@ README screenshot, MIT. No libadwaita, no GTK4: keep it that way for consistency
 - Window opens with the last host prefilled and selected in the entry. Enter connects.
   Escape or Ctrl+Q closes the window. Closing it never kills a running session
   (spawned with `start_new_session`).
-- The entry resolves a saved host by name or address; anything else is an ad hoc
-  connect with the default options, and sdl-freerdp asks for credentials itself.
+- The entry resolves a saved host by name or address. An unknown address opens the
+  Add dialog prefilled with it (focus on User); saving connects immediately. sdl-freerdp's
+  own credential dialog should never appear; only `quickrdp.py <unknown-address>` on the
+  command line still leaves credentials to it.
 - Connecting to a host with a user but no stored password asks for it in the launcher
   first (Enter connects), stores it, then launches.
 - List rows are saved hosts; double-click or Enter on a row connects, selecting a row

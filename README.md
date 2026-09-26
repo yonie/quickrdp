@@ -25,7 +25,8 @@ and asked for the password every single time.
   otherwise tends to misjudge the link and throttle the encoder into a stuttery mess.
 - Session windows are filed under QuickRDP's app id, so GNOME remembers the
   "allow inhibiting shortcuts" answer instead of asking on every connect.
-- Anything typed that is not a saved host is an ad hoc connect.
+- An unknown address opens the Add dialog prefilled, so credentials are entered in
+  QuickRDP and the host is saved and connected in one go.
 - `quickrdp.py <name>` connects without showing a window (handy for desktop actions).
 - Sessions keep running when the launcher is closed.
 

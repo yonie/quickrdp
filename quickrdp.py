@@ -251,12 +251,11 @@ class QuickRDP:
             self.show_toast("Type a host first")
             return
         name = resolve_host(self.cfg, text)
+        if name is None:
+            # Unknown address: collect credentials here, save, then connect.
+            name = self.edit_host(None, address=text)
         if name:
             self.connect_host(name)
-        else:
-            # Ad hoc: sdl-freerdp asks for credentials itself.
-            launch("", {"address": text, "args": DEFAULT_ARGS}, self.on_exit)
-            self.show_toast(f"Connecting to {text}")
 
     def connect_host(self, name):
         if not name:
@@ -300,8 +299,10 @@ class QuickRDP:
         dialog.destroy()
         return pw if response == Gtk.ResponseType.OK else None
 
-    def edit_host(self, name):
-        host = self.cfg["hosts"].get(name, {}) if name else {}
+    def edit_host(self, name, address=None):
+        """Add or edit a host. Returns the saved name, or None on cancel."""
+        host = self.cfg["hosts"].get(name, {}) if name else {"address": address or ""}
+        saved = None
         dialog = Gtk.Dialog(title="Edit host" if name else "Add host",
                             parent=self.window, modal=True)
         dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
@@ -334,7 +335,7 @@ class QuickRDP:
         grid.attach(error, 1, len(rows), 1, 1)
         dialog.get_content_area().add(grid)
         dialog.show_all()
-        fields["address"].grab_focus()
+        fields["user" if address else "address"].grab_focus()
 
         while dialog.run() == Gtk.ResponseType.OK:
             address = fields["address"].get_text().strip()
@@ -360,9 +361,10 @@ class QuickRDP:
             save_config(self.cfg)
             self.refresh()
             self.select_name(new_name)
-            self.show_toast(f"Saved {new_name}")
+            saved = new_name
             break
         dialog.destroy()
+        return saved
 
     def delete_host(self, name):
         if not name:
@@ -424,9 +426,10 @@ class QuickRDP:
 A minimal launcher for sdl-freerdp (FreeRDP's own client).
 
 <b>How to use:</b>
-1. Add a host (address, user, password; the name defaults to the address)
-2. Type its name or pick it in the list
+1. Type an address and press Enter
+2. Fill in user and password once (kept in the keyring)
 3. Enter connects; the session opens in its own window
+4. Next time: pick the host, or just press Enter
 
 <b>Shortcuts:</b>
 • Enter — Connect
