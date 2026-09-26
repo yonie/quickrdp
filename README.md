@@ -14,8 +14,10 @@ and asked for the password every single time.
 ## Features
 
 - Opens with the last host prefilled and selected. **Enter connects.**
+- Adding a host only needs an address; user, password and domain are optional and the
+  name defaults to the address. Enter saves.
 - Saved hosts in a list; double-click connects, Edit and Delete do what they say.
-  Enter inside the edit dialog saves.
+
 - Passwords live in the **GNOME keyring** (libsecret) and are handed to sdl-freerdp over
   stdin, never on the command line. Missing one? QuickRDP asks once and stores it.
 - Sensible session defaults: `/dynamic-resolution /gfx:AVC444 /network:lan +clipboard

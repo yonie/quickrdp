@@ -20,7 +20,9 @@ README screenshot, MIT. No libadwaita, no GTK4: keep it that way for consistency
   first (Enter connects), stores it, then launches.
 - List rows are saved hosts; double-click or Enter on a row connects, selecting a row
   fills the entry. Edit (F2) and Delete (Delete key, list focused) act on the selection.
-  Enter inside the edit dialog saves.
+  Enter inside the edit dialog saves. Only the address is required; the name defaults to
+  it. Validation errors show inside the dialog, not as a toast (the dialog is modal and
+  would hide it).
 - `quickrdp.py <name>` connects without a window (used by the desktop file's
   "Connect to blue" action).
 

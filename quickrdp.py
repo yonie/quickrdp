@@ -313,11 +313,11 @@ class QuickRDP:
             getattr(grid, f"set_margin_{side}")(12)
         fields = {}
         rows = [
-            ("name", "Name", name or "", True),
             ("address", "Address", host.get("address", ""), True),
             ("user", "User", host.get("user", ""), True),
-            ("domain", "Domain", host.get("domain", ""), True),
             ("password", "Password", password_get(name) or "" if name else "", False),
+            ("domain", "Domain", host.get("domain", ""), True),
+            ("name", "Name", name or "", True),
             ("args", "sdl-freerdp options", host.get("args") or DEFAULT_ARGS, True),
         ]
         for i, (key, label, value, visible) in enumerate(rows):
@@ -326,15 +326,23 @@ class QuickRDP:
                               hexpand=True, width_chars=40)
             grid.attach(entry, 1, i, 1, 1)
             fields[key] = entry
+        fields["name"].set_placeholder_text("defaults to the address")
+        fields["domain"].set_placeholder_text("optional")
+        error = Gtk.Label(xalign=0)
+        error.get_style_context().add_class("error")
+        error.set_no_show_all(True)
+        grid.attach(error, 1, len(rows), 1, 1)
         dialog.get_content_area().add(grid)
         dialog.show_all()
-        fields["address" if name else "name"].grab_focus()
+        fields["address"].grab_focus()
 
         while dialog.run() == Gtk.ResponseType.OK:
-            new_name = fields["name"].get_text().strip()
             address = fields["address"].get_text().strip()
-            if not new_name or not address:
-                self.show_toast("Name and address are required")
+            new_name = fields["name"].get_text().strip() or address
+            if not address:
+                error.set_text("An address is required.")
+                error.show()
+                fields["address"].grab_focus()
                 continue
             hosts = self.cfg["hosts"]
             if name and name != new_name:
@@ -416,7 +424,7 @@ class QuickRDP:
 A minimal launcher for sdl-freerdp (FreeRDP's own client).
 
 <b>How to use:</b>
-1. Add a host (name, address, user, password)
+1. Add a host (address, user, password; the name defaults to the address)
 2. Type its name or pick it in the list
 3. Enter connects; the session opens in its own window
 
