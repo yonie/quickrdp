@@ -38,6 +38,16 @@ ERRORS = {
     "ERRCONNECT_SECURITY_NEGO_CONNECT_FAILED": "Security negotiation failed.",
     "ERRCONNECT_TLS_CONNECT_FAILED": "TLS connection failed.",
     "ERRCONNECT_AUTHENTICATION_FAILED": "Authentication failed.",
+    "ERRCONNECT_ACCOUNT_LOCKED_OUT": "The account is locked out after too many failed "
+                                     "logins. Wait for the lockout to expire, then try again.",
+    "ERRCONNECT_ACCOUNT_DISABLED": "The account is disabled.",
+    "ERRCONNECT_ACCOUNT_EXPIRED": "The account has expired.",
+    "ERRCONNECT_PASSWORD_EXPIRED": "The password has expired.",
+    "ERRCONNECT_PASSWORD_MUST_CHANGE": "The password must be changed before logging in.",
+    "ERRCONNECT_ACCOUNT_RESTRICTION": "The account is not allowed to log in this way.",
+    "ERRCONNECT_LOGON_TYPE_NOT_GRANTED": "The account is not allowed to use Remote Desktop.",
+    "ERRCONNECT_WRONG_PASSWORD": "The password was rejected.",
+    "ERRCONNECT_ACCESS_DENIED": "Access denied.",
 }
 
 
