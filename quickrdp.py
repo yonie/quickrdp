@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 import gi
@@ -25,6 +26,10 @@ APP_ID = "quickrdp"  # matches quickrdp.desktop, see AGENTS.md
 CLIENT = "sdl-freerdp"
 CONFIG = Path(os.environ.get("QUICKRDP_CONFIG") or GLib.get_user_config_dir() + "/quickrdp/hosts.json")
 LOGDIR = Path(GLib.get_user_cache_dir()) / "quickrdp"
+SDL_PREFS = Path(os.environ.get("QUICKRDP_SDL_PREFS")
+                 or GLib.get_user_config_dir() + "/freerdp/sdl-freerdp.json")
+HOTKEY_MOD = "KMOD_RCTRL"  # sdl-freerdp's default is Right Shift, which eats typed capitals
+CONNECTED_MARKER = b"[gdi_init_ex]"  # logged once the RDP connection is active
 DEFAULT_ARGS = "/dynamic-resolution /gfx:AVC444 /network:lan +clipboard +auto-reconnect"
 SCHEMA = Secret.Schema.new(
     "org.yonie.quickrdp", Secret.SchemaFlags.NONE, {"host": Secret.SchemaAttributeType.STRING}
@@ -103,6 +108,31 @@ def password_set(name, pw):
 
 # ---------------------------------------------------------------- launching
 
+def ensure_hotkey_mask(path=None):
+    """Move sdl-freerdp's hotkey modifier off Right Shift.
+
+    sdl-freerdp swallows Right Shift + R/M/G/D/Return as its own window shortcuts, so
+    capitals typed with the right hand never reach the host. There is no command-line
+    switch; the only knob is SDL_KeyModMask in its JSON prefs. Set it to Right Ctrl
+    unless the file already states a choice. A file that does not parse is left alone."""
+    path = path or SDL_PREFS
+    prefs = {}
+    if path.exists():
+        try:
+            prefs = json.loads(path.read_text())
+        except (OSError, ValueError):
+            return False
+        if not isinstance(prefs, dict) or "SDL_KeyModMask" in prefs:
+            return False
+    prefs["SDL_KeyModMask"] = [HOTKEY_MOD]
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(prefs, indent=2) + "\n")
+    except OSError:
+        return False
+    return True
+
+
 def build_argv(host):
     """May raise ValueError for malformed options (unmatched quote)."""
     argv = [CLIENT, f"/v:{host['address']}"]
@@ -114,12 +144,21 @@ def build_argv(host):
     return argv
 
 
-def launch(name, host, on_exit=None):
+def launch(name, host, on_exit=None, on_connect=None):
     """Spawn sdl-freerdp detached. A stored password goes in over stdin.
 
+    `on_connect(name)` fires (on the GTK thread) once the session log shows the
+    connection is active; `on_exit(name, code, log)` when the process ends.
     Raises FileNotFoundError when the client is not installed and ValueError
     for malformed options."""
     argv = build_argv(host)
+    if shutil.which(argv[0]) is None:
+        raise FileNotFoundError(argv[0])
+    # sdl-freerdp's INFO lines go to stdout, which is block-buffered into a file, so
+    # the connect marker would only show up when the session ends. Line-buffer it.
+    if shutil.which("stdbuf"):
+        argv = ["stdbuf", "-oL"] + argv
+    ensure_hotkey_mask()
     pw = password_get(name) if name else None
     if pw:
         argv.append("/from-stdin")
@@ -138,12 +177,28 @@ def launch(name, host, on_exit=None):
     if pw:
         proc.stdin.write((pw + "\n").encode())
         proc.stdin.close()
-    if on_exit:
+    if on_exit or on_connect:
         def wait():
+            if on_connect and tail_until(log, proc, CONNECTED_MARKER):
+                GLib.idle_add(on_connect, name)
             code = proc.wait()
-            GLib.idle_add(on_exit, name, code, log)
+            if on_exit:
+                GLib.idle_add(on_exit, name, code, log)
         threading.Thread(target=wait, daemon=True).start()
     return proc
+
+
+def tail_until(log, proc, marker, interval=0.2):
+    """Follow `log` while `proc` runs; True as soon as `marker` appears."""
+    seen = b""
+    with open(log, "rb") as f:
+        while True:
+            seen = (seen + f.read())[-4096:]
+            if marker in seen:
+                return True
+            if proc.poll() is not None:
+                return False  # ended first: on_exit reports how
+            time.sleep(interval)
 
 
 def explain_exit(code, log):
@@ -355,7 +410,7 @@ class QuickRDP:
             if err:
                 self.show_toast(err, 6000)
         try:
-            self.sessions[name] = launch(name, host, self.on_exit)
+            self.sessions[name] = launch(name, host, self.on_exit, self.on_connect)
         except FileNotFoundError:
             self.show_error(f"{CLIENT} is not installed",
                             "Fedora: sudo dnf install freerdp")
@@ -364,6 +419,11 @@ class QuickRDP:
             self.show_error(f"Bad options for {name}", f"{e}. Edit the host to fix them.")
             return
         self.show_toast(f"Connecting to {name}")
+
+    def on_connect(self, name):
+        """The session is up: the launcher's job is done, so it goes away."""
+        Gtk.main_quit()
+        return False
 
     def on_exit(self, name, code, log):
         self.sessions.pop(name, None)
@@ -581,6 +641,7 @@ A minimal launcher for sdl-freerdp (FreeRDP's own client).
 2. Fill in user and password once (kept in the keyring)
 3. Enter connects; the session opens in its own window
 4. Next time: pick the host, or just press Enter
+5. The launcher closes by itself once the session is up
 
 <b>Shortcuts:</b>
 • Enter — Connect
@@ -591,7 +652,9 @@ A minimal launcher for sdl-freerdp (FreeRDP's own client).
 • Esc or Ctrl+Q — Close (sessions keep running)
 
 A rejected password is forgotten and asked again.
-Inside a session, Right Ctrl+G releases the keyboard grab.
+Inside a session, Right Ctrl+G releases the keyboard grab
+(QuickRDP moves sdl-freerdp's hotkey modifier from Right Shift
+to Right Ctrl, so capitals typed with the right hand get through).
 
 <b>GitHub:</b> github.com/yonie/quickrdp
 

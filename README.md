@@ -29,8 +29,12 @@ and asked for the password every single time.
 - An unknown address opens the Add dialog prefilled, so credentials are entered in
   QuickRDP and the host is saved and connected in one go.
 - `quickrdp.py <name>` connects without showing a window (handy for desktop actions).
-- Sessions keep running when the launcher is closed. Connecting to a host that is already
-  open just says so instead of opening a second session.
+- The launcher closes by itself once the session is up. Closing it earlier is fine too,
+  sessions keep running. Connecting to a host that is already open just says so instead
+  of opening a second session.
+- sdl-freerdp uses Right Shift as its hotkey modifier, so Right Shift+R, M, G, D and Enter
+  never reach the host. QuickRDP moves that to Right Ctrl (`SDL_KeyModMask` in
+  `~/.config/freerdp/sdl-freerdp.json`, only written when the key is absent).
 - Failures that are not your fault (host unreachable, TLS, and so on) stay on screen in a
   dialog with the log path, rather than vanishing in a toast.
 

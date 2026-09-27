@@ -14,6 +14,20 @@ README screenshot, MIT. No libadwaita, no GTK4: keep it that way for consistency
 - Window opens with the last host prefilled and selected in the entry. Enter connects.
   Escape or Ctrl+Q closes the window. Closing it never kills a running session
   (spawned with `start_new_session`).
+- The launcher quits on its own once the session is established (Ronald, 2026-09-27:
+  "it's just a launcher"). `launch()` tails the session log in its wait thread and
+  fires `on_connect` when `[gdi_init_ex]` appears: sdl-freerdp logs that at INFO from
+  `postConnect`, i.e. after NLA accepted the credentials and the RDP connection went
+  active. Nothing earlier is reliable: the SDL window and renderer exist before the
+  connect (they show the connecting dialog) and the state transitions are only logged
+  at DEBUG on the chatty `core.rdp` tag. Consequence: failures before that line
+  (logon, TLS, cancelled cert dialog) still reach `on_exit` and its dialogs; anything
+  after it is sdl-freerdp's business (`+auto-reconnect`).
+  The child runs under `stdbuf -oL`: WLog writes INFO to stdout and ERROR/WARN to
+  stderr, and stdout redirected to a file is block-buffered, so without it the marker
+  only reached the log when the session ended (first attempt 2026-09-27 failed exactly
+  like that). Because `stdbuf` hides a missing client, `launch()` checks
+  `shutil.which` itself and raises `FileNotFoundError`.
 - The entry resolves a saved host by name or address. An unknown address opens the
   Add dialog prefilled with it (focus on User); saving connects immediately. sdl-freerdp's
   own credential dialog should never appear; only `quickrdp.py <unknown-address>` on the
@@ -72,6 +86,21 @@ the same id via `GLib.set_prgname`. Answer Allow once and it is stored in the po
 permission store (`PermissionStore.Lookup gnome shortcuts-inhibitor`). Inside a
 session, Right Ctrl+G toggles the grab; `-grab-keyboard` in a host's options disables
 it entirely.
+
+## sdl-freerdp hotkeys: Right Shift is the default modifier
+
+sdl-freerdp's built-in shortcuts (Return fullscreen, R resizeable, M minimize, G grab,
+D disconnect) hang off `SDL_KeyModMask`, default `KMOD_RSHIFT`, matched as
+`(mods & mask) == mask`. That swallows Right Shift+R and friends before they reach
+Windows, so capitals typed with the right hand went missing (found 2026-09-27; the log
+line is `<KMOD_RSHIFT>+<SDL_SCANCODE_R> pressed, toggling resizeable state`). There is
+no command-line switch, only `$XDG_CONFIG_HOME/freerdp/sdl-freerdp.json`, so
+`ensure_hotkey_mask()` runs before every launch and writes
+`{"SDL_KeyModMask": ["KMOD_RCTRL"]}` into that file, merging with whatever else is there.
+It only acts when the key is absent (an explicit value is Ronald's choice) and leaves an
+unparseable file untouched. `QUICKRDP_SDL_PREFS` overrides the path for tests. Setting
+`XDG_CONFIG_HOME` for the child instead was rejected: it would also move the trusted
+certificate store under `~/.config/freerdp/server/`.
 
 ## Dependencies (Fedora)
 
